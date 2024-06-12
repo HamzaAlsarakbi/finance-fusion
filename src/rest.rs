@@ -1,10 +1,10 @@
 use anyhow::Result;
 
 use axum::{
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-    Router,
+  http::StatusCode,
+  response::{ IntoResponse, Response },
+  routing::get,
+  Router,
 };
 
 use tokio::sync::oneshot::Receiver;
@@ -20,27 +20,23 @@ struct AppError(anyhow::Error);
 /// This is useful because it allows us to return `anyhow::Error` from our handlers and have axum
 /// convert it into a response.
 impl IntoResponse for AppError {
-    fn into_response(self) -> Response {
-        tracing::error!("Request failed: {}", self.0);
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
-    }
+  fn into_response(self) -> Response {
+    tracing::error!("Request failed: {}", self.0);
+    (
+      StatusCode::INTERNAL_SERVER_ERROR,
+      format!("Something went wrong: {}", self.0),
+    ).into_response()
+  }
 }
 
 /// This is a trait from `anyhow` that allows us to convert any error that implements `Into<anyhow::Error>`
 /// into our custom error type.
 /// This is useful because it allows us to return any error from our handlers and have axum
 /// convert it into a response.
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
-    }
+impl<E> From<E> for AppError where E: Into<anyhow::Error> {
+  fn from(err: E) -> Self {
+    Self(err.into())
+  }
 }
 
 /// Creates a new instance of the REST application.
@@ -49,20 +45,24 @@ where
 ///
 /// * `Router` - The router with the REST API endpoints.
 pub fn app() -> Router {
-    #[derive(OpenApi)]
-    #[openapi(
-        paths(
-            hello
-        ),
-        tags(
-            (name = "Finance Fusion Server", description = "Endpoints for the Finance Fusion Server"),
-        )
-    )]
-    struct ApiDoc;
+  #[derive(OpenApi)]
+  #[openapi(
+    paths(hello),
+    tags((
+      name = "Finance Fusion Server",
+      description = "Endpoints for the Finance Fusion Server",
+    ))
+  )]
+  struct ApiDoc;
 
-    Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-        .route("/alameen/hello", get(hello))
+  Router::new()
+    .merge(
+      SwaggerUi::new("/swagger-ui").url(
+        "/api-docs/openapi.json",
+        ApiDoc::openapi()
+      )
+    )
+    .route("/alameen/hello", get(hello))
 }
 
 /// Starts the REST server.
@@ -89,17 +89,17 @@ pub fn app() -> Router {
 /// The function then starts the server and waits for it to complete.
 /// If the server encounters an error, it is converted to an `anyhow::Error` and returned.
 pub async fn start_rest_server(rest_port: u16, rx: Receiver<()>) -> Result<()> {
-    let bind_address = format!("0.0.0.0:{rest_port}");
-    let listener = tokio::net::TcpListener::bind(bind_address).await?;
+  let bind_address = format!("0.0.0.0:{rest_port}");
+  let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
-    let app = app();
+  let app = app();
 
-    // Start the server
-    let server = axum::serve(listener, app).with_graceful_shutdown(async {
-        rx.await.ok();
-    });
+  // Start the server
+  let server = axum::serve(listener, app).with_graceful_shutdown(async {
+    rx.await.ok();
+  });
 
-    server.await.map_err(anyhow::Error::from)
+  server.await.map_err(anyhow::Error::from)
 }
 
 /// This endpoint responds with a simple greeting message.
@@ -110,57 +110,52 @@ pub async fn start_rest_server(rest_port: u16, rx: Receiver<()>) -> Result<()> {
 ///
 /// `default` : An unexpected error occurred. Returns an `AppError`.
 #[utoipa::path(
-    get,
-    path = "/analytic/hello",
-    responses(
-        (status = 200, description = "Successful response")
-    )
+  get,
+  path = "/api/hello",
+  responses((status = 200, description = "Successful response"))
 )]
 async fn hello() -> Result<String, AppError> {
-    Ok("Hello, Rust!".to_string())
+  Ok("Hello, Rust!".to_string())
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use axum::body::Body;
-    use axum::http::{Request, Uri};
-    use http_body_util::BodyExt;
-    use tower::ServiceExt;
+  use super::*;
+  use axum::body::Body;
+  use axum::http::{ Request, Uri };
+  use http_body_util::BodyExt;
+  use tower::ServiceExt;
 
-    #[tokio::test]
-    async fn test_hello() {
-        let app = app();
+  #[tokio::test]
+  async fn test_hello() {
+    let app = app();
 
-        let request = Request::builder()
-            .method("GET")
-            .uri(Uri::from_static("/analytic/hello"))
-            .body(Body::empty())
-            .unwrap();
+    let request = Request::builder()
+      .method("GET")
+      .uri(Uri::from_static("/analytic/hello"))
+      .body(Body::empty())
+      .unwrap();
 
-        let response = app.oneshot(request).await.unwrap();
+    let response = app.oneshot(request).await.unwrap();
 
-        assert_eq!(response.status(), 200, "Should return 200 OK.");
+    assert_eq!(response.status(), 200, "Should return 200 OK.");
 
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let body_str = std::str::from_utf8(&body).unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body_str = std::str::from_utf8(&body).unwrap();
 
-        assert_eq!(
-            body_str, "Hello, Rust!",
-            "Should return the correct greeting."
-        );
-    }
+    assert_eq!(body_str, "Hello, Rust!", "Should return the correct greeting.");
+  }
 
-    #[tokio::test]
-    async fn test_start_rest_server() {
-        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+  #[tokio::test]
+  async fn test_start_rest_server() {
+    let (tx, rx) = tokio::sync::oneshot::channel::<()>();
 
-        let rest_port = 8080;
-        let server = start_rest_server(rest_port, rx);
+    let rest_port = 8080;
+    let server = start_rest_server(rest_port, rx);
 
-        tx.send(()).expect("Failed to send shutdown signal");
+    tx.send(()).expect("Failed to send shutdown signal");
 
-        tokio::select! {
+    tokio::select! {
             result = server => {
                 result.expect("Server encountered an error");
             }
@@ -168,27 +163,28 @@ mod tests {
                 // Server shut down successfully
             }
         }
-    }
+  }
 
-    // Write tests for AppError and From<E> for AppError here
-    #[tokio::test]
-    async fn test_app_error() {
-        let error = anyhow::Error::msg("Test error");
-        let app_error = AppError::from(error);
+  // Write tests for AppError and From<E> for AppError here
+  #[tokio::test]
+  async fn test_app_error() {
+    let error = anyhow::Error::msg("Test error");
+    let app_error = AppError::from(error);
 
-        let response = app_error.into_response();
-        assert_eq!(
-            response.status(),
-            500,
-            "Should return 500 Internal Server Error."
-        );
+    let response = app_error.into_response();
+    assert_eq!(
+      response.status(),
+      500,
+      "Should return 500 Internal Server Error."
+    );
 
-        let body = response.into_body().collect().await.unwrap().to_bytes();
-        let body_str = std::str::from_utf8(&body).unwrap();
+    let body = response.into_body().collect().await.unwrap().to_bytes();
+    let body_str = std::str::from_utf8(&body).unwrap();
 
-        assert_eq!(
-            body_str, "Something went wrong: Test error",
-            "Should return the correct error message."
-        );
-    }
+    assert_eq!(
+      body_str,
+      "Something went wrong: Test error",
+      "Should return the correct error message."
+    );
+  }
 }

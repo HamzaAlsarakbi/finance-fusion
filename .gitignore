@@ -1,1 +1,7 @@
 /target
+
+# Mac stuff
+.DS_Store
+
+# Setup
+.vscode
