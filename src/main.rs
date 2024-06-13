@@ -1,10 +1,16 @@
-use clap::Parser;
-
 use anyhow::Result;
-
-use finance_fusion_server::{run, Args, VERSION};
+use clap::Parser;
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod config;
+mod errors;
+
+mod api;
+mod database;
+mod routes;
+
+use config::config::{run, Args, VERSION};
 
 #[tokio::main]
 async fn main() -> Result<()> {

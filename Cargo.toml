@@ -4,15 +4,20 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-anyhow = "1.0.86"
 axum = "0.7.5"
+bcrypt = "0.15.1"
+bson = "2.11.0"
 clap = { version = "4.5.7", features = ["derive"] }
 git-version = "0.3.9"
+serde = "1.0.203"
+serde_json = "1.0.117"
+thiserror = "1.0.61"
 tokio = { version = "1.38.0", features= ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 utoipa = { version = "4.2.3", features = ["axum_extras", "openapi_extensions"] }
 utoipa-swagger-ui =  { version = "7.1.0", features = ["axum"] }
+wither = "0.9.0"
 
 [profile.coverage]
 inherits = "dev"

@@ -1,12 +1,9 @@
-mod rest;
-
 use clap::Parser;
-
 use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::oneshot;
 
-use anyhow::Result;
-
+use crate::api::api;
+use crate::errors::Error;
 /// Compile-time version string. Defaults to 0.0.0-a.0-0-g0 if git is not available
 pub const VERSION: &str =
   git_version::git_version!(args = ["--always", "--long"], fallback = "0.0.0-a.0-0-g0");
@@ -53,13 +50,13 @@ pub struct Args {
 /// # Errors
 /// If an error occurs while starting the REST server, it is converted to an `anyhow::Error` and
 /// returned.
-pub async fn run(args: Args) -> Result<()> {
+pub async fn run(args: Args) -> Result<(), Error> {
   // Create a one-shot channel for shutdown signal communication
   let (tx, rx) = oneshot::channel();
 
   // Spawn a new asynchronous task to start the REST server
   let rest_server_task =
-    tokio::spawn(async move { rest::start_rest_server(args.rest_port, rx).await });
+    tokio::spawn(async move { api::start_rest_server(args.rest_port, rx).await });
 
   let mut sigint = signal(SignalKind::interrupt())?;
   let mut sigterm = signal(SignalKind::terminate())?;
