@@ -2,16 +2,14 @@ mod rest;
 
 use clap::Parser;
 
-use tokio::signal::unix::{ signal, SignalKind };
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::oneshot;
 
 use anyhow::Result;
 
 /// Compile-time version string. Defaults to 0.0.0-a.0-0-g0 if git is not available
-pub const VERSION: &str = git_version::git_version!(
-  args = ["--always", "--long"],
-  fallback = "0.0.0-a.0-0-g0"
-);
+pub const VERSION: &str =
+  git_version::git_version!(args = ["--always", "--long"], fallback = "0.0.0-a.0-0-g0");
 
 /// A server that listens to Finance Fusion's output and generates analytics of various types.
 #[derive(Parser, Debug)]
@@ -60,9 +58,8 @@ pub async fn run(args: Args) -> Result<()> {
   let (tx, rx) = oneshot::channel();
 
   // Spawn a new asynchronous task to start the REST server
-  let rest_server_task = tokio::spawn(async move {
-    rest::start_rest_server(args.rest_port, rx).await
-  });
+  let rest_server_task =
+    tokio::spawn(async move { rest::start_rest_server(args.rest_port, rx).await });
 
   let mut sigint = signal(SignalKind::interrupt())?;
   let mut sigterm = signal(SignalKind::terminate())?;

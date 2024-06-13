@@ -2,21 +2,20 @@ use clap::Parser;
 
 use anyhow::Result;
 
-use finance_fusion_server::{ run, Args, VERSION };
-use tracing::{ error, info };
-use tracing_subscriber::{ layer::SubscriberExt, util::SubscriberInitExt };
+use finance_fusion_server::{run, Args, VERSION};
+use tracing::{error, info};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[tokio::main]
 async fn main() -> Result<()> {
   // Set up tracing, which is used for logging.
-  tracing_subscriber
-    ::registry()
+  tracing_subscriber::registry()
     .with(
       tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
         // axum logs rejections from built-in extractors with the `axum::rejection`
         // target, at `TRACE` level. `axum::rejection=trace` enables showing those events
         "finance_fusion=info,tower_http=info,axum::rejection=trace".into()
-      })
+      }),
     )
     .with(tracing_subscriber::fmt::layer())
     .init();

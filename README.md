@@ -17,18 +17,7 @@ cargo build
 cargo run
 ```
 
-## Setting up Development Environment
+### TODO
 
-### 1. Install Rust
-
-### 2. Install prettier
-
-Run as `sudo`
-
-```bash
-npm i -g prettier-plugin-rust prettier
-```
-
-### 3. VSCode
-
-1. Setup prettier as your default code formatter for this project
+1. Unit Tests
+2. Jenkins pipeline for CI/CD

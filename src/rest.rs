@@ -2,7 +2,7 @@ use anyhow::Result;
 
 use axum::{
   http::StatusCode,
-  response::{ IntoResponse, Response },
+  response::{IntoResponse, Response},
   routing::get,
   Router,
 };
@@ -25,7 +25,8 @@ impl IntoResponse for AppError {
     (
       StatusCode::INTERNAL_SERVER_ERROR,
       format!("Something went wrong: {}", self.0),
-    ).into_response()
+    )
+      .into_response()
   }
 }
 
@@ -33,7 +34,10 @@ impl IntoResponse for AppError {
 /// into our custom error type.
 /// This is useful because it allows us to return any error from our handlers and have axum
 /// convert it into a response.
-impl<E> From<E> for AppError where E: Into<anyhow::Error> {
+impl<E> From<E> for AppError
+where
+  E: Into<anyhow::Error>,
+{
   fn from(err: E) -> Self {
     Self(err.into())
   }
@@ -56,12 +60,7 @@ pub fn app() -> Router {
   struct ApiDoc;
 
   Router::new()
-    .merge(
-      SwaggerUi::new("/swagger-ui").url(
-        "/api-docs/openapi.json",
-        ApiDoc::openapi()
-      )
-    )
+    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
     .route("/alameen/hello", get(hello))
 }
 
@@ -122,7 +121,7 @@ async fn hello() -> Result<String, AppError> {
 mod tests {
   use super::*;
   use axum::body::Body;
-  use axum::http::{ Request, Uri };
+  use axum::http::{Request, Uri};
   use http_body_util::BodyExt;
   use tower::ServiceExt;
 
@@ -143,7 +142,10 @@ mod tests {
     let body = response.into_body().collect().await.unwrap().to_bytes();
     let body_str = std::str::from_utf8(&body).unwrap();
 
-    assert_eq!(body_str, "Hello, Rust!", "Should return the correct greeting.");
+    assert_eq!(
+      body_str, "Hello, Rust!",
+      "Should return the correct greeting."
+    );
   }
 
   #[tokio::test]
@@ -158,11 +160,11 @@ mod tests {
     tokio::select! {
             result = server => {
                 result.expect("Server encountered an error");
-            }
-            () = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
-                // Server shut down successfully
-            }
         }
+        () = tokio::time::sleep(std::time::Duration::from_secs(1)) => {
+                // Server shut down successfully
+        }
+    }
   }
 
   // Write tests for AppError and From<E> for AppError here
@@ -182,8 +184,7 @@ mod tests {
     let body_str = std::str::from_utf8(&body).unwrap();
 
     assert_eq!(
-      body_str,
-      "Something went wrong: Test error",
+      body_str, "Something went wrong: Test error",
       "Should return the correct error message."
     );
   }
