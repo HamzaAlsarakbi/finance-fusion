@@ -4,18 +4,22 @@ use axum::Json;
 use bcrypt::BcryptError;
 use serde_json::json;
 use tokio::task::JoinError;
-use wither::bson;
-use wither::mongodb::error::Error as MongoError;
-use wither::WitherError;
+
+use diesel::result::Error as DieselError;
+use diesel::result::ConnectionError as SQLError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("...")]
-pub enum Error {
+pub enum AppError {
   #[error("{0}")]
-  Wither(#[from] WitherError),
+  Diesel(#[from] DieselError),
 
   #[error("{0}")]
-  Mongo(#[from] MongoError),
+  SQL(#[from] SQLError),
+  
+  #[error("{0}")]
+  Signal(#[from] std::io::Error),
+
 
   #[error("Error parsing ObjectID {0}")]
   ParseObjectID(String),
@@ -39,39 +43,42 @@ pub enum Error {
   HashPassword(#[from] BcryptError),
 }
 
-impl Error {
+impl AppError {
   fn get_codes(&self) -> (StatusCode, u16) {
     match *self {
       // 4XX Errors
-      Error::ParseObjectID(_) => (StatusCode::BAD_REQUEST, 40001),
-      Error::BadRequest(_) => (StatusCode::BAD_REQUEST, 40002),
-      Error::NotFound(_) => (StatusCode::NOT_FOUND, 40003),
-      Error::Authenticate(AuthenticateError::WrongCredentials) => (StatusCode::UNAUTHORIZED, 40004),
-      Error::Authenticate(AuthenticateError::InvalidToken) => (StatusCode::UNAUTHORIZED, 40005),
-      Error::Authenticate(AuthenticateError::Locked) => (StatusCode::LOCKED, 40006),
+      AppError::ParseObjectID(_) => (StatusCode::BAD_REQUEST, 40001),
+      AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, 40002),
+      AppError::NotFound(_) => (StatusCode::NOT_FOUND, 40003),
+      AppError::Authenticate(AuthenticateError::WrongCredentials) => (StatusCode::UNAUTHORIZED, 40004),
+      AppError::Authenticate(AuthenticateError::InvalidToken) => (StatusCode::UNAUTHORIZED, 40005),
+      AppError::Authenticate(AuthenticateError::Locked) => (StatusCode::LOCKED, 40006),
 
       // 5XX Errors
-      Error::Authenticate(AuthenticateError::TokenCreation) => {
+      AppError::Signal(_) => {
+        (StatusCode::INTERNAL_SERVER_ERROR, 5003)
+      }
+      AppError::Authenticate(AuthenticateError::TokenCreation) => {
         (StatusCode::INTERNAL_SERVER_ERROR, 5001)
       }
-      Error::Wither(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5002),
-      Error::Mongo(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5003),
-      Error::SerializeMongoResponse(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5004),
-      Error::RunSyncTask(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5005),
-      Error::HashPassword(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5006),
+      AppError::Diesel(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5002),
+      AppError::SQL(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5003),
+      AppError::SerializeMongoResponse(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5004),
+      AppError::RunSyncTask(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5005),
+      AppError::HashPassword(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5006),
     }
   }
 
   pub fn bad_request() -> Self {
-    Error::BadRequest(BadRequest {})
+    AppError::BadRequest(BadRequest {})
   }
 
   pub fn not_found() -> Self {
-    Error::NotFound(NotFound {})
+    AppError::NotFound(NotFound {})
   }
 }
 
-impl IntoResponse for Error {
+impl IntoResponse for AppError {
   fn into_response(self) -> Response {
     let (status_code, code) = self.get_codes();
     let message = self.to_string();

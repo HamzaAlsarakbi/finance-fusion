@@ -4,10 +4,16 @@ use axum::{
 };
 
 use tokio::sync::oneshot::Receiver;
+
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::{errors::Error, routes};
+use crate::{errors::AppError, routes};
+use crate::routes::vitals::Vitals;
+
+#[derive(OpenApi)]
+#[openapi(components(schemas(Vitals)))]
+struct ApiDoc;
 
 /// Creates a new instance of the REST application.
 ///
@@ -43,7 +49,7 @@ pub fn app() -> Router {
 ///
 /// The function then starts the server and waits for it to complete.
 /// If the server encounters an error, it is converted to an `anyhow::Error` and returned.
-pub async fn start_rest_server(rest_port: u16, rx: Receiver<()>) -> Result<(), Error> {
+pub async fn start_rest_server(rest_port: u16, rx: Receiver<()>) -> Result<(), AppError> {
   let bind_address = format!("0.0.0.0:{}", rest_port);
   let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
@@ -55,7 +61,7 @@ pub async fn start_rest_server(rest_port: u16, rx: Receiver<()>) -> Result<(), E
   });
 
   if let Err(err) = server.await {
-    return Err(Error::from(err));
+    return Err(AppError::from(err));
   }
 
   Ok(())

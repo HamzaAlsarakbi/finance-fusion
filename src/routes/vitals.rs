@@ -2,13 +2,20 @@ use axum::{routing::get, Json, Router};
 use bson::doc;
 use serde::{Deserialize, Serialize};
 use tracing::debug;
+use utoipa::{OpenApi, ToSchema};
 
-use crate::errors::Error;
+use crate::errors::AppError;
+
+#[derive(Debug, Serialize, Deserialize, OpenApi, ToSchema)]
+#[openapi(paths(get_vitals))]
+pub struct Vitals {
+  status: String,
+}
 
 pub fn create_route() -> Router {
   Router::new()
     .route("/vitals", get(get_vitals))
-    .route("/hello", get(get_vitals))
+    .route("/hello", get(hello))
 }
 
 /// This endpoint responds with a simple greeting message.
@@ -23,7 +30,7 @@ pub fn create_route() -> Router {
   path = "/vitals",
   responses((status = 200, description = "Successful response"))
 )]
-async fn get_vitals() -> Result<Json<Vitals>, Error> {
+async fn get_vitals() -> Result<Json<Vitals>, AppError> {
   debug!("Returning vitals");
   Ok(Json(Vitals {
     status: "ok".to_owned(),
@@ -39,14 +46,9 @@ async fn get_vitals() -> Result<Json<Vitals>, Error> {
 /// `default` : An unexpected error occurred. Returns an `AppError`.
 #[utoipa::path(
   get,
-  path = "/api/hello",
+  path = "/hello",
   responses((status = 200, description = "Successful response"))
 )]
-async fn hello() -> Result<String, Error> {
+async fn hello() -> Result<String, AppError> {
   Ok("Hello, Rust!".to_string())
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct Vitals {
-  status: String,
 }

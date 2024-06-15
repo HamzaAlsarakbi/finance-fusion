@@ -1,5 +1,5 @@
-use anyhow::Result;
 use clap::Parser;
+use errors::AppError;
 use tracing::{error, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -13,7 +13,7 @@ mod routes;
 use config::config::{run, Args, VERSION};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), AppError> {
   // Set up tracing, which is used for logging.
   tracing_subscriber::registry()
     .with(
