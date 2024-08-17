@@ -1,28 +1,27 @@
+use std::sync::Arc;
+
 use axum::{routing::get, Json, Router};
 use bson::doc;
 use serde::{Deserialize, Serialize};
-use tracing::debug;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::ToSchema;
 
-use crate::errors::AppError;
+use crate::{database::db::DbPool, errors::AppError};
 
-#[derive(Debug, Serialize, Deserialize, OpenApi, ToSchema)]
-#[openapi(paths(get_vitals))]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Vitals {
-  status: String,
+  pub status: String,
 }
-
-pub fn create_route() -> Router {
+pub fn create_route() -> Router<Arc<DbPool>> {
   Router::new()
     .route("/vitals", get(get_vitals))
     .route("/hello", get(hello))
 }
 
-/// This endpoint responds with a simple greeting message.
+/// This endpoint responds with the vitals of the server.
 ///
 /// ## Responses
 ///
-/// `200` : A successful response. Returns a greeting message as a string.
+/// `200` : A successful response. Returns a JSON object containing the server's vitals.
 ///
 /// `default` : An unexpected error occurred. Returns an `AppError`.
 #[utoipa::path(
@@ -30,8 +29,7 @@ pub fn create_route() -> Router {
   path = "/vitals",
   responses((status = 200, description = "Successful response"))
 )]
-async fn get_vitals() -> Result<Json<Vitals>, AppError> {
-  debug!("Returning vitals");
+pub async fn get_vitals() -> Result<Json<Vitals>, AppError> {
   Ok(Json(Vitals {
     status: "ok".to_owned(),
   }))
@@ -50,5 +48,5 @@ async fn get_vitals() -> Result<Json<Vitals>, AppError> {
   responses((status = 200, description = "Successful response"))
 )]
 async fn hello() -> Result<String, AppError> {
-  Ok("Hello, Rust!".to_string())
+  Ok("Hello, world!".to_owned())
 }

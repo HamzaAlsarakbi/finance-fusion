@@ -5,3 +5,7 @@
 
 # Setup
 .vscode
+
+
+# DB env
+.env

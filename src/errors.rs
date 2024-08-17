@@ -5,8 +5,8 @@ use bcrypt::BcryptError;
 use serde_json::json;
 use tokio::task::JoinError;
 
-use diesel::result::Error as DieselError;
 use diesel::result::ConnectionError as SQLError;
+use diesel::result::Error as DieselError;
 
 #[derive(thiserror::Error, Debug)]
 #[error("...")]
@@ -16,10 +16,9 @@ pub enum AppError {
 
   #[error("{0}")]
   SQL(#[from] SQLError),
-  
+
   #[error("{0}")]
   Signal(#[from] std::io::Error),
-
 
   #[error("Error parsing ObjectID {0}")]
   ParseObjectID(String),
@@ -50,14 +49,14 @@ impl AppError {
       AppError::ParseObjectID(_) => (StatusCode::BAD_REQUEST, 40001),
       AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, 40002),
       AppError::NotFound(_) => (StatusCode::NOT_FOUND, 40003),
-      AppError::Authenticate(AuthenticateError::WrongCredentials) => (StatusCode::UNAUTHORIZED, 40004),
+      AppError::Authenticate(AuthenticateError::WrongCredentials) => {
+        (StatusCode::UNAUTHORIZED, 40004)
+      }
       AppError::Authenticate(AuthenticateError::InvalidToken) => (StatusCode::UNAUTHORIZED, 40005),
       AppError::Authenticate(AuthenticateError::Locked) => (StatusCode::LOCKED, 40006),
 
       // 5XX Errors
-      AppError::Signal(_) => {
-        (StatusCode::INTERNAL_SERVER_ERROR, 5003)
-      }
+      AppError::Signal(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5003),
       AppError::Authenticate(AuthenticateError::TokenCreation) => {
         (StatusCode::INTERNAL_SERVER_ERROR, 5001)
       }

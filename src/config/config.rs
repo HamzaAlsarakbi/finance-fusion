@@ -1,8 +1,11 @@
+use std::sync::Arc;
+
 use clap::Parser;
-// use tokio::signal::unix::{signal, SignalKind};
+use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::oneshot;
 
 use crate::api::api;
+use crate::database::db::DbPool;
 use crate::errors::AppError;
 /// Compile-time version string. Defaults to 0.0.0-a.0-0-g0 if git is not available
 pub const VERSION: &str =
@@ -50,29 +53,28 @@ pub struct Args {
 /// # Errors
 /// If an error occurs while starting the REST server, it is converted to an `anyhow::Error` and
 /// returned.
-pub async fn run(args: Args) -> Result<(), AppError> {
+pub async fn run(args: Args, pool: Arc<DbPool>) -> Result<(), AppError> {
   // Create a one-shot channel for shutdown signal communication
-  // let (tx, rx) = oneshot::channel();
-  let (_, rx) = oneshot::channel();
+  let (tx, rx) = oneshot::channel();
 
   // Spawn a new asynchronous task to start the REST server
   let rest_server_task =
-    tokio::spawn(async move { api::start_rest_server(args.rest_port, rx).await });
+    tokio::spawn(async move { api::start_rest_server(args.rest_port, rx, pool).await });
 
-  // let mut sigint = signal(SignalKind::interrupt())?;
-  // let mut sigterm = signal(SignalKind::terminate())?;
+  let mut sigint = signal(SignalKind::interrupt())?;
+  let mut sigterm = signal(SignalKind::terminate())?;
 
   // Wait for either the REST server task to complete, or for a shutdown signal to be received
   tokio::select! {
     _ = rest_server_task => {},
-    // _ = sigint.recv() => {
-    //   println!("Received SIGINT");
-    //   let _ = tx.send(());
-    // },
-    // _ = sigterm.recv() => {
-    //   println!("Received SIGTERM");
-    //   let _ = tx.send(());
-    // },
+    _ = sigint.recv() => {
+      println!("Received SIGINT");
+      let _ = tx.send(());
+    },
+    _ = sigterm.recv() => {
+      println!("Received SIGTERM");
+      let _ = tx.send(());
+    },
   }
 
   Ok(())

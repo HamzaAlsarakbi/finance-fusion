@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use clap::Parser;
 use errors::AppError;
 use tracing::{error, info};
@@ -29,9 +31,12 @@ async fn main() -> Result<(), AppError> {
   // Parse command line arguments
   let args = Args::parse();
 
+  // Connect to database
+  let shared_pool = Arc::new(database::db::establish_connection_pool());
+
   info!("Starting Finance Fusion Server v{VERSION}");
 
-  match run(args).await {
+  match run(args, shared_pool).await {
     Ok(()) => info!("Exiting Finance Fusion Server"),
     Err(e) => error!("Server encountered an error: {e}"),
   }
