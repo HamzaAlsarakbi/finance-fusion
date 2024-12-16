@@ -9,12 +9,12 @@ use crate::{database::db::DbPool, errors::AppError};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Vitals {
-  pub status: String,
+    pub status: String,
 }
 pub fn create_route() -> Router<Arc<DbPool>> {
-  Router::new()
-    .route("/vitals", get(get_vitals))
-    .route("/hello", get(hello))
+    Router::new()
+        .route("/vitals", get(get_vitals))
+        .route("/hello", get(hello))
 }
 
 /// This endpoint responds with the vitals of the server.
@@ -30,9 +30,9 @@ pub fn create_route() -> Router<Arc<DbPool>> {
   responses((status = 200, description = "Successful response"))
 )]
 pub async fn get_vitals() -> Result<Json<Vitals>, AppError> {
-  Ok(Json(Vitals {
-    status: "ok".to_owned(),
-  }))
+    Ok(Json(Vitals {
+        status: "ok".to_owned(),
+    }))
 }
 
 /// This endpoint responds with a simple greeting message.
@@ -48,5 +48,5 @@ pub async fn get_vitals() -> Result<Json<Vitals>, AppError> {
   responses((status = 200, description = "Successful response"))
 )]
 async fn hello() -> Result<String, AppError> {
-  Ok("Hello, world!".to_owned())
+    Ok("Hello, world!".to_owned())
 }

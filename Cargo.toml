@@ -7,8 +7,9 @@ edition = "2021"
 axum = "0.7.5"
 bcrypt = "0.15.1"
 bson = "2.11.0"
+chrono = { version = "0.4.38", features = ["serde"] }
 clap = { version = "4.5.7", features = ["derive"] }
-diesel = { version = "2.2.1", features = ["postgres", "r2d2"] }
+diesel = { version = "2.2.1", features = ["postgres", "r2d2", "chrono"] }
 dotenv = "0.15.0"
 git-version = "0.3.9"
 serde = "1.0.203"

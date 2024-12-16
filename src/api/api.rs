@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use axum::{
-  // routing::get,
-  Router,
+    // routing::get,
+    Router,
 };
 
 use tokio::sync::oneshot::Receiver;
@@ -33,11 +33,11 @@ struct ApiDoc;
 ///
 /// * `Router` - The router with the REST API endpoints.
 pub fn app(pool: Arc<DbPool>) -> Router {
-  Router::new()
-    .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
-    .merge(routes::vitals::create_route())
-    .merge(routes::users::create_route())
-    .with_state(pool)
+    Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(routes::vitals::create_route())
+        .merge(routes::users::create_route())
+        .with_state(pool)
 }
 
 /// Starts the REST server.
@@ -64,26 +64,26 @@ pub fn app(pool: Arc<DbPool>) -> Router {
 /// The function then starts the server and waits for it to complete.
 /// If the server encounters an error, it is converted to an `anyhow::Error` and returned.
 pub async fn start_rest_server(
-  rest_port: u16,
-  rx: Receiver<()>,
-  pool: Arc<DbPool>,
+    rest_port: u16,
+    rx: Receiver<()>,
+    pool: Arc<DbPool>,
 ) -> Result<(), AppError> {
-  let bind_address = format!("0.0.0.0:{}", rest_port);
-  info!("Listening on http://localhost:{rest_port}");
-  let listener = tokio::net::TcpListener::bind(bind_address).await?;
+    let bind_address = format!("0.0.0.0:{}", rest_port);
+    info!("Listening on http://localhost:{rest_port}");
+    let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
-  let app = app(pool);
+    let app = app(pool);
 
-  // Start the server
-  let server = axum::serve(listener, app.into_make_service()).with_graceful_shutdown(async {
-    rx.await.ok();
-  });
+    // Start the server
+    let server = axum::serve(listener, app.into_make_service()).with_graceful_shutdown(async {
+        rx.await.ok();
+    });
 
-  if let Err(err) = server.await {
-    return Err(AppError::from(err));
-  }
+    if let Err(err) = server.await {
+        return Err(AppError::from(err));
+    }
 
-  Ok(())
+    Ok(())
 }
 
 // #[cfg(test)]

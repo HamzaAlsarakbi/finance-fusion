@@ -8,16 +8,16 @@ pub type DbPool = r2d2::Pool<ConnectionManager<PgConnection>>;
 
 // Function to create and return a connection pool
 pub fn establish_connection_pool() -> DbPool {
-  tracing::info!("Establishing connection pool.");
+    tracing::info!("Establishing connection pool.");
 
-  dotenv().ok();
+    dotenv().ok();
 
-  let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-  let manager = ConnectionManager::<PgConnection>::new(database_url);
-  Pool::builder()
-    .build(manager)
-    .expect("Failed to create pool.")
+    let manager = ConnectionManager::<PgConnection>::new(database_url);
+    Pool::builder()
+        .build(manager)
+        .expect("Failed to create pool.")
 }
 
 /// Function to get a connection from the pool
@@ -37,10 +37,10 @@ pub fn establish_connection_pool() -> DbPool {
 /// let connection = get_connection(&pool);
 /// ```
 pub fn get_connection(pool: &DbPool) -> Option<PooledConnection<ConnectionManager<PgConnection>>> {
-  if let Ok(connection) = pool.get() {
-    Some(connection)
-  } else {
-    tracing::error!("Failed to get connection from the pool.");
-    None
-  }
+    if let Ok(connection) = pool.get() {
+        Some(connection)
+    } else {
+        tracing::error!("Failed to get connection from the pool.");
+        None
+    }
 }
