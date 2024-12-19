@@ -9,3 +9,6 @@
 
 # DB env
 .env
+
+# Generated files]
+src/database/schema.rs
