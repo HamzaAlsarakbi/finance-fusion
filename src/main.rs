@@ -32,7 +32,7 @@ async fn main() -> Result<(), AppError> {
     let args = Args::parse();
 
     // Connect to database
-    let shared_pool = Arc::new(database::db::establish_connection_pool());
+    let shared_pool = Arc::new(database::db::DbPool::establish_connection_pool());
 
     info!("Starting Finance Fusion Server v{VERSION}");
 

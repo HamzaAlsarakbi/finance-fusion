@@ -9,10 +9,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
 
 use crate::{
-    database::{
-        db::DbPool,
-        users::{db_create_user, db_get_user, db_update_user, User},
-    },
+    database::{db::DbPool, users::{User, UserPublic}},
     errors::AppError,
 };
 
@@ -60,10 +57,9 @@ async fn create_user(
     State(pool): State<Arc<DbPool>>,
     Json(payload): Json<CreateUser>,
 ) -> Result<String, AppError> {
-    let mut conn = pool.get().unwrap();
-    let res = db_create_user(&mut conn, &payload.name, &payload.password);
-    tracing::info!("res: {:?}", res);
-    Ok(format!("Creating user: {0}", payload.name))
+    let mut conn = pool.get()?;
+    User::new(&mut conn, &payload.name, &payload.password)?;
+    Ok(format!("Creating user: {}", payload.name))
 }
 
 /// Retreives a specific user.
@@ -84,13 +80,10 @@ async fn create_user(
 async fn get_user(
     State(pool): State<Arc<DbPool>>,
     Path(username): Path<String>,
-) -> Result<Json<User>, AppError> {
-    let mut conn = pool.get().unwrap();
-    let user = db_get_user(&mut conn, username);
-    match user {
-        Some(user) => Ok(Json(user)),
-        None => Err(AppError::not_found()),
-    }
+) -> Result<Json<UserPublic>, AppError> {
+    let mut conn = pool.get()?;
+    let user = User::from_username(&mut conn, &username)?.to_public();
+    Ok(Json(user))
 }
 
 /// Updates a specific user.
@@ -106,7 +99,10 @@ async fn get_user(
   params(
     ("id" = String, Path, description = "ID of the user to update")
   ),
-  responses((status = 200, description = "User updated"))
+  responses(
+    (status = 200, description = "Updated user {id} successfully"),
+    (status = 404, description = "User {id} not found")
+)
 )]
 async fn update_user(
     State(pool): State<Arc<DbPool>>,
@@ -114,20 +110,10 @@ async fn update_user(
     Json(payload): Json<UpdateUser>,
 ) -> Result<String, AppError> {
     // return if can't get pool connection
-    let mut conn = match pool.get() {
-        Ok(conn) => conn,
-        Err(e) => {
-            tracing::error!("Failed to get connection from pool for user update. {e}");
-            return Err(AppError::Unknown);
-        }
-    };
+    let mut conn = pool.get()?;
 
-    if db_update_user(&mut conn, &payload.name, &payload.password) {
-        return Ok(format!("Updated user {id} successfully"));
-    }
-
-    tracing::error!("Failed to update user {id}.");
-    Err(AppError::Unknown)
+    User::update(&mut conn, id as i32, &payload.name, &payload.password)
+        .map(|_| format!("Updated user {id} successfully"))
 }
 
 /// Deletes a specific user.
@@ -143,9 +129,14 @@ async fn update_user(
   params(
     ("id" = String, Path, description = "ID of the user to update")
   ),
-  responses((status = 200, description = "User retrieved"))
+  responses((status = 200, description = "Deleted user {id} successfully"))
 )]
-async fn delete_user(Path(id): Path<u64>) -> Result<String, AppError> {
-    // TODO: authenticate that the user is logged in
-    Ok(format!("Retrieving user with ID: {}", id))
+async fn delete_user(
+    State(pool): State<Arc<DbPool>>,
+    Path(id): Path<u64>,
+) -> Result<String, AppError> {
+    // return if can't get pool connection
+    let mut conn = pool.get()?;
+
+    User::delete(&mut conn, id as i32).map(|_| format!("Deleted user {id} successfully"))
 }

@@ -27,7 +27,7 @@ cargo run
 ### Updating the Schema (Pre v1.0)
 
 1. Update the `up.sql` and `down.sql`
-2. Run `diesel migration run`
+2. Run `diesel migration redo`
 3. Run `diesel print-schema > src/database/schema.rs`
 
 ### Updating the Schema (Post v1.0)

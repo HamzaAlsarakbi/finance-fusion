@@ -41,8 +41,8 @@ pub enum AppError {
     #[error("{0}")]
     HashPassword(#[from] BcryptError),
 
-    #[error("Unknown error")]
-    Unknown,
+    #[error("Database connection error")]
+    DbConnectionError,
 }
 
 impl AppError {
@@ -59,6 +59,7 @@ impl AppError {
                 (StatusCode::UNAUTHORIZED, 40005)
             }
             AppError::Authenticate(AuthenticateError::Locked) => (StatusCode::LOCKED, 40006),
+            AppError::Authenticate(AuthenticateError::SessionExpired) => (StatusCode::UNAUTHORIZED, 40007),
 
             // 5XX Errors
             AppError::Signal(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5003),
@@ -70,7 +71,7 @@ impl AppError {
             AppError::SerializeMongoResponse(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5004),
             AppError::RunSyncTask(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5005),
             AppError::HashPassword(_) => (StatusCode::INTERNAL_SERVER_ERROR, 5006),
-            AppError::Unknown => (StatusCode::INTERNAL_SERVER_ERROR, 5000),
+            AppError::DbConnectionError => (StatusCode::INTERNAL_SERVER_ERROR, 5002),
         }
     }
 
@@ -104,6 +105,8 @@ pub enum AuthenticateError {
     InvalidToken,
     #[error("User is locked")]
     Locked,
+    #[error("Session has expired")]
+    SessionExpired,
 }
 
 #[derive(thiserror::Error, Debug)]

@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     // routing::get,
+    middleware,
     Router,
 };
 
@@ -12,17 +13,20 @@ use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
 use crate::database::db::DbPool;
+use crate::routes::auth::LoginInfo;
 use crate::routes::users::{CreateUser, UpdateUser};
 use crate::routes::vitals::Vitals;
 use crate::{errors::AppError, routes};
 #[derive(OpenApi)]
 #[openapi(
-  components(schemas(Vitals, CreateUser, UpdateUser)),
+  components(schemas(Vitals, CreateUser, UpdateUser, LoginInfo)),
   paths(crate::routes::vitals::get_vitals, crate::routes::vitals::hello,
-    crate::routes::users::get_user, crate::routes::users::create_user, crate::routes::users::update_user),
+    crate::routes::users::get_user, crate::routes::users::create_user, crate::routes::users::update_user, crate::routes::users::delete_user,
+    crate::routes::auth::login, crate::routes::auth::logout),
   tags(
     (name="vitals", description="Endpoints for retrieving system vitals"),
     (name="users", description="Endpoints for managing users"),
+    (name="auth", description="Endpoints for user authentication")
   )
 )]
 struct ApiDoc;
@@ -37,6 +41,7 @@ pub fn app(pool: Arc<DbPool>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(routes::vitals::create_route())
         .merge(routes::users::create_route())
+        .merge(routes::auth::create_route(pool.clone()))
         .with_state(pool)
 }
 
@@ -68,7 +73,7 @@ pub async fn start_rest_server(
     rx: Receiver<()>,
     pool: Arc<DbPool>,
 ) -> Result<(), AppError> {
-    let bind_address = format!("0.0.0.0:{}", rest_port);
+    let bind_address = format!("0.0.0.0:{rest_port}");
     info!("Listening on http://localhost:{rest_port}");
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
