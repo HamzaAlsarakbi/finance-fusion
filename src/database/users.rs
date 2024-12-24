@@ -22,6 +22,8 @@ pub struct User {
     two_fa_secret: Option<String>,
     /// The timestamp when the user was created
     created_at: chrono::NaiveDateTime,
+    /// If the user is in developer mode
+    is_dev_mode: bool,
     // logins: Vec<UserLogin>,
 
     // Lockout policy
@@ -51,6 +53,8 @@ pub struct UserPublic {
     username: String,
     /// The timestamp when the user was created
     created_at: chrono::NaiveDateTime,
+    /// If the user is in developer mode
+    is_dev_mode: bool,
 }
 
 /// New user struct
@@ -190,7 +194,7 @@ impl User {
         // bcrypt::verify(password, &user.pw_hash).unwrap()
 
         // If account is locked and cannot be unlocked.
-        if self.is_locked() && !self.unlock(conn).is_ok() {
+        if self.is_locked() && self.unlock(conn).is_err() {
             return Err(AppError::Authenticate(
                 crate::errors::AuthenticateError::Locked,
             ));
@@ -239,7 +243,7 @@ impl User {
         self.save_changes(conn)
     }
 
-    fn lock(&mut self, conn: &mut DbConn) {
+    fn lock(&mut self, conn: &mut DbConn) -> Result<(), AppError> {
         let lock_duration = self.lock_duration_s * self.lock_duration_factor;
         let lock_duration = lock_duration.min(self.lock_duration_cap_s) as i64;
 
@@ -247,7 +251,7 @@ impl User {
             Some(chrono::Utc::now().naive_utc() + chrono::Duration::seconds(lock_duration));
 
         // Update database
-        self.save_changes(conn);
+        self.save_changes(conn)
     }
 
     /// Check if the password is correct
@@ -321,6 +325,121 @@ impl User {
             id: self.id,
             username: self.username.clone(),
             created_at: self.created_at,
+            is_dev_mode: self.is_dev_mode,
         }
+    }
+}
+
+// write tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::database::db::DbPool;
+
+    #[test]
+    fn test_new_user() {
+        let pool = DbPool::establish_connection_pool_for_testing();
+        let conn = &mut pool.get().unwrap();
+
+        let username = "test_user";
+        let password = "test_password";
+
+        let user = User::new(conn, username, password).unwrap();
+
+        assert_eq!(user.username, username);
+
+        // TODO(hamza): Verify that the password is hashed
+        // Verify that the user is saved correctly in the database
+        let found_user = users::table
+            .filter(users::id.eq(user.id))
+            .first::<User>(conn)
+            .unwrap();
+
+        assert_eq!(found_user.username, username);
+        // assert_eq!(found_user.pw_hash, password);
+        assert!(!found_user.is_dev_mode);
+        assert_eq!(found_user.invalid_login_attempts, 0);
+        assert_eq!(found_user.lock_duration_s, 60);
+        assert_eq!(found_user.lock_duration_factor, 2);
+        assert_eq!(found_user.lock_duration_cap_s, 3600);
+        assert_eq!(found_user.locked_until, None);
+
+        // Cleanup
+        diesel::delete(users::table.filter(users::id.eq(user.id)))
+            .execute(conn)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_from_id() {
+        let pool = DbPool::establish_connection_pool_for_testing();
+        let conn = &mut pool.get().unwrap();
+
+        let username = "test_user";
+        let password = "test_password";
+
+        let user = User::new(conn, username, password).unwrap();
+
+        let found_user = User::from_id(conn, user.id).unwrap();
+
+        assert_eq!(found_user.username, username);
+
+        // Cleanup
+        diesel::delete(users::table.filter(users::id.eq(user.id)))
+            .execute(conn)
+            .unwrap();
+    }
+
+    #[test]
+    fn test_from_username() {
+        let pool = DbPool::establish_connection_pool_for_testing();
+        let conn = &mut pool.get().unwrap();
+
+        let username = "test_user";
+        let password = "test_password";
+
+        let user = User::new(conn, username, password).unwrap();
+
+        assert_eq!(user.username, username);
+
+        // Cleanup
+        diesel::delete(users::table.filter(users::id.eq(user.id)))
+            .execute(conn)
+            .unwrap();
+    }
+
+    // #[test]
+    // fn test_update_user() {
+    //     let pool = DbPool::establish_connection_pool_for_testing();
+    //     let conn = &mut pool.get().unwrap();
+
+    //     let username = "test_user";
+    //     let password = "test_password";
+
+    //     let user = User::new(conn, username, password).unwrap();
+
+    //     let new_password = "new_password";
+    //     User::update(conn, user.id, username, new_password).unwrap();
+
+    //     let updated_user = users.filter(id.eq(user.id)).first::<User>(conn).unwrap();
+
+    //     assert_eq!(updated_user.pw_hash, new_password);
+    // }
+
+    #[test]
+    fn test_delete_user() {
+        let pool = DbPool::establish_connection_pool_for_testing();
+        let conn = &mut pool.get().unwrap();
+
+        let username = "test_user";
+        let password = "test_password";
+
+        let user = User::new(conn, username, password).unwrap();
+
+        User::delete(conn, user.id).unwrap();
+
+        let result = User::from_username(conn, username);
+
+        assert!(result.is_err());
     }
 }

@@ -38,12 +38,12 @@ pub fn create_route(pool: Arc<DbPool>) -> Router<Arc<DbPool>> {
 /// This endpoint logs a user in
 ///
 /// ## Responses
-/// `200` : A successful response. Returns a string indicating the user was logged in.
+/// `200` : A successful response. Returns a session token string.
 /// `default` : An unexpected error occurred. Returns an `AppError`.
 #[utoipa::path(
     post,
     path = "/auth/login",
-    responses((status = 200, description = "User logged in"))
+    responses((status = 200))
 )]
 async fn login(
     State(pool): State<Arc<DbPool>>,
@@ -55,11 +55,7 @@ async fn login(
 
     let session = user.authenticate(&mut conn, &info.password)?;
 
-    session.token();
-
-    // Here you would normally validate the username and password
-    // For simplicity, we'll just return a success message
-    Ok("Logged in".to_string())
+    session.token()
 }
 
 /// This endpoint logs a user out
@@ -88,7 +84,7 @@ pub async fn jwt_auth(
     if let Some(auth_header) = req.headers().get("Authorization") {
         if let Ok(auth_str) = auth_header.to_str() {
             if auth_str.starts_with("Bearer ") {
-                let token = &auth_str[7..];
+                let token = auth_str.strip_prefix("Bearer ").unwrap_or("");
                 if let Ok(session) = Session::from_token(&mut conn, token) {
                     // Add user ID (claims.sub) to request extensions
                     req.extensions_mut().insert(session.user_id());

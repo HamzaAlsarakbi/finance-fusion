@@ -51,6 +51,27 @@ impl DbPool {
                 .expect("Failed to create pool."),
         }
     }
+    #[cfg(test)]
+    pub fn establish_connection_pool_for_testing() -> Self {
+        dotenv().ok();
+
+        let database_username = env::var("DATABASE_USERNAME").unwrap_or("postgres".to_string());
+        let database_password = env::var("DATABASE_PASSWORD").unwrap_or("password".to_string());
+        let database_host = env::var("DATABASE_HOST").unwrap_or("localhost".to_string());
+        let database_port = env::var("DATABASE_PORT").unwrap_or("5432".to_string());
+        let database_name =
+            env::var("DATABASE_NAME_TEST").unwrap_or("finance_fusion_test".to_string());
+
+        let manager = ConnectionManager::<PgConnection>::new(format!(
+            "postgres://{}:{}@{}:{}/{}",
+            database_username, database_password, database_host, database_port, database_name
+        ));
+        Self {
+            connection: Pool::builder()
+                .build(manager)
+                .expect("Failed to create pool."),
+        }
+    }
     /// Function to get a connection from the pool
     ///
     /// # Returns
