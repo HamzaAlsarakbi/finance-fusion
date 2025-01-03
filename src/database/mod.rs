@@ -1,4 +1,3 @@
-pub mod db;
+pub mod connection;
+pub mod models;
 mod schema;
-pub mod sessions;
-pub mod users;

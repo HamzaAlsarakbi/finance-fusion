@@ -1,4 +1,3 @@
-pub mod auth;
 pub mod plans;
+pub mod sessions;
 pub mod users;
-pub mod vitals;

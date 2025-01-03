@@ -5,7 +5,7 @@ use tokio::signal::unix::{signal, SignalKind};
 use tokio::sync::oneshot;
 
 use crate::api::api;
-use crate::database::db::DbPool;
+use crate::database::connection::DbPool;
 use crate::errors::AppError;
 /// Compile-time version string. Defaults to 0.0.0-a.0-0-g0 if git is not available
 pub const VERSION: &str =

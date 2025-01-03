@@ -9,7 +9,10 @@ use serde::{Deserialize, Serialize};
 use utoipa::{OpenApi, ToSchema};
 
 use crate::{
-    database::{db::DbPool, users::{User, UserPublic}},
+    database::{
+        connection::DbPool,
+        models::users::{User, UserPublic},
+    },
     errors::AppError,
 };
 

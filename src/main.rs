@@ -7,9 +7,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod config;
 mod errors;
+mod utils;
 
 mod api;
 mod database;
+mod middleware;
 mod routes;
 
 use config::config::{run, Args, VERSION};
@@ -32,7 +34,7 @@ async fn main() -> Result<(), AppError> {
     let args = Args::parse();
 
     // Connect to database
-    let shared_pool = Arc::new(database::db::DbPool::establish_connection_pool());
+    let shared_pool = Arc::new(database::connection::DbPool::new());
 
     info!("Starting Finance Fusion Server v{VERSION}");
 

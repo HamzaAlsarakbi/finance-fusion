@@ -2,7 +2,7 @@ use crate::{database::schema::users, errors::AppError};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use super::{db::DbConn, sessions::Session};
+use crate::database::{connection::DbConn, models::sessions::manager::Session};
 
 /// Struct to represent a user
 ///
@@ -68,7 +68,7 @@ struct NewUser<'a> {
 }
 
 impl User {
-    /// Create a new user
+    /// Creates a new user
     ///
     /// # Arguments
     ///
@@ -79,7 +79,7 @@ impl User {
     /// # Returns
     ///
     /// A boolean indicating if the user was created successfully.
-    pub fn new(conn: &mut DbConn, username: &str, password: &str) -> Result<User, AppError> {
+    pub fn new(conn: &mut DbConn, username: &str, password: &str) -> Result<Self, AppError> {
         let new_user = NewUser {
             username,
             pw_hash: password,
@@ -94,7 +94,16 @@ impl User {
             })
     }
 
-    /// Update a user's password
+    /// Creates a new user with default values
+    #[cfg(test)]
+    pub fn default(conn: &mut DbConn) -> Result<Self, AppError> {
+        let username = "test_user";
+        let password = "test_password";
+
+        User::new(conn, username, password)
+    }
+
+    /// Updates a user's password
     ///
     /// # Arguments
     ///
@@ -127,7 +136,7 @@ impl User {
         }
     }
 
-    /// Delete a user
+    /// Deletes a user
     ///
     /// # Arguments
     ///
@@ -151,7 +160,7 @@ impl User {
         self.locked_until.is_some()
     }
 
-    /// Get a user by ID
+    /// Gets a user by ID
     ///
     /// # Arguments
     ///
@@ -169,7 +178,7 @@ impl User {
                 AppError::Diesel(e)
             })
     }
-    /// Get a user by username
+    /// Gets a user by username
     ///
     /// # Arguments
     ///
@@ -203,13 +212,13 @@ impl User {
         // If the password is correct, return Ok(())
         if !self.check_password(password) {
             // Increment the invalid login attempts and lock account if necessary
-            self.increment_invalid_login_attempts(conn);
+            self.increment_invalid_login_attempts(conn)?;
 
             return Err(AppError::Authenticate(
                 crate::errors::AuthenticateError::WrongCredentials,
             ));
         }
-        self.reset_invalid_login_attempts(conn);
+        self.reset_invalid_login_attempts(conn)?;
 
         let session = Session::new(conn, self.id)?;
         Ok(session)
@@ -273,12 +282,16 @@ impl User {
     /// # Arguments
     ///
     /// * `conn` - A mutable reference to a `DbConn`.
-    pub fn reset_invalid_login_attempts(&mut self, conn: &mut DbConn) {
+    ///
+    /// # Returns
+    ///
+    /// A result indicating if the invalid login attempts were reset successfully.
+    pub fn reset_invalid_login_attempts(&mut self, conn: &mut DbConn) -> Result<(), AppError> {
         self.invalid_login_attempts = 0;
         self.lock_duration_factor = 3600;
 
         // Update database
-        self.save_changes(conn);
+        self.save_changes(conn)
     }
 
     /// Increment the number of invalid login attempts
@@ -286,13 +299,18 @@ impl User {
     /// # Arguments
     ///
     /// * `conn` - A mutable reference to a `DbConn`.
-    pub fn increment_invalid_login_attempts(&mut self, conn: &mut DbConn) {
+    ///
+    /// # Returns
+    ///
+    /// A result indicating if the invalid login attempts were incremented successfully.
+    pub fn increment_invalid_login_attempts(&mut self, conn: &mut DbConn) -> Result<(), AppError> {
         self.invalid_login_attempts += 1;
 
         // Lock the account if necessary
         if self.invalid_login_attempts >= 3 {
-            self.lock(conn);
+            self.lock(conn)?
         }
+        Ok(())
     }
 
     /// Save changes to the user
@@ -328,18 +346,25 @@ impl User {
             is_dev_mode: self.is_dev_mode,
         }
     }
+
+    /// Get the ID of the user
+    #[cfg(test)]
+    pub fn id(&self) -> i32 {
+        self.id
+    }
 }
 
 // write tests
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::database::db::DbPool;
+    use crate::database::connection::DbPool;
 
     #[test]
     fn test_new_user() {
-        let pool = DbPool::establish_connection_pool_for_testing();
+        let pool = DbPool::new_test();
         let conn = &mut pool.get().unwrap();
+        conn.begin_test_transaction().unwrap();
 
         let username = "test_user";
         let password = "test_password";
@@ -372,8 +397,9 @@ mod tests {
 
     #[test]
     fn test_from_id() {
-        let pool = DbPool::establish_connection_pool_for_testing();
+        let pool = DbPool::new_test();
         let conn = &mut pool.get().unwrap();
+        conn.begin_test_transaction().unwrap();
 
         let username = "test_user";
         let password = "test_password";
@@ -383,17 +409,13 @@ mod tests {
         let found_user = User::from_id(conn, user.id).unwrap();
 
         assert_eq!(found_user.username, username);
-
-        // Cleanup
-        diesel::delete(users::table.filter(users::id.eq(user.id)))
-            .execute(conn)
-            .unwrap();
     }
 
     #[test]
     fn test_from_username() {
-        let pool = DbPool::establish_connection_pool_for_testing();
+        let pool = DbPool::new_test();
         let conn = &mut pool.get().unwrap();
+        conn.begin_test_transaction().unwrap();
 
         let username = "test_user";
         let password = "test_password";
@@ -401,11 +423,6 @@ mod tests {
         let user = User::new(conn, username, password).unwrap();
 
         assert_eq!(user.username, username);
-
-        // Cleanup
-        diesel::delete(users::table.filter(users::id.eq(user.id)))
-            .execute(conn)
-            .unwrap();
     }
 
     // #[test]
@@ -428,8 +445,9 @@ mod tests {
 
     #[test]
     fn test_delete_user() {
-        let pool = DbPool::establish_connection_pool_for_testing();
+        let pool = DbPool::new_test();
         let conn = &mut pool.get().unwrap();
+        conn.begin_test_transaction().unwrap();
 
         let username = "test_user";
         let password = "test_password";

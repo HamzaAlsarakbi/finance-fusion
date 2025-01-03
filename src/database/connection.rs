@@ -28,7 +28,7 @@ impl DbPool {
     /// * This function will panic if the `DATABASE_PORT` environment variable is not set.
     /// * This function will panic if the `DATABASE_NAME` environment variable is not set.
     /// * This function should only be called once in the application.
-    pub fn establish_connection_pool() -> Self {
+    pub fn new() -> Self {
         tracing::info!("Establishing connection pool.");
 
         dotenv().ok();
@@ -52,7 +52,7 @@ impl DbPool {
         }
     }
     #[cfg(test)]
-    pub fn establish_connection_pool_for_testing() -> Self {
+    pub fn new_test() -> Self {
         dotenv().ok();
 
         let database_username = env::var("DATABASE_USERNAME").unwrap_or("postgres".to_string());
@@ -62,15 +62,36 @@ impl DbPool {
         let database_name =
             env::var("DATABASE_NAME_TEST").unwrap_or("finance_fusion_test".to_string());
 
-        let manager = ConnectionManager::<PgConnection>::new(format!(
+        let database_url = format!(
             "postgres://{}:{}@{}:{}/{}",
             database_username, database_password, database_host, database_port, database_name
-        ));
+        );
+
+        Self::run_migrations(&database_url).expect("Failed to run migrations");
+
+        let manager = ConnectionManager::<PgConnection>::new(database_url);
         Self {
             connection: Pool::builder()
                 .build(manager)
                 .expect("Failed to create pool."),
         }
+    }
+
+    #[cfg(test)]
+    fn run_migrations(database_url_test: &str) -> Result<(), std::io::Error> {
+        dotenv().ok();
+
+        // Run Diesel migrations on the test database
+        std::process::Command::new("diesel")
+            .arg("migration")
+            .arg("run")
+            .env("DATABASE_URL", database_url_test)
+            .output()
+            .map(|_| ())
+            .map_err(|e| {
+                eprintln!("Failed to run migrations: {}", e);
+                e
+            })
     }
     /// Function to get a connection from the pool
     ///

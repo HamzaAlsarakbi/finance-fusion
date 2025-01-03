@@ -24,6 +24,7 @@ CREATE TABLE sessions (
 
 CREATE TABLE plans (
     name VARCHAR(64) PRIMARY KEY NOT NULL,
+    user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     last_modified TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -82,6 +83,7 @@ CREATE TABLE transactions (
     amount DECIMAL(10, 2) NOT NULL,
     currency VARCHAR(3) NOT NULL REFERENCES currencies(code),
     statement TEXT,
+    is_cancelled BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 

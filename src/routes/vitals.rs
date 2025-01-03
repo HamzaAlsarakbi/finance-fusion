@@ -5,7 +5,7 @@ use bson::doc;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{database::db::DbPool, errors::AppError};
+use crate::{database::connection::DbPool, errors::AppError};
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct Vitals {

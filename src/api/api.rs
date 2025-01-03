@@ -1,32 +1,40 @@
 use std::sync::Arc;
 
-use axum::{
-    // routing::get,
-    middleware,
-    Router,
-};
+use axum::http::HeaderValue;
+use axum::Router;
 
+use axum::http::{header, Method};
 use tokio::sync::oneshot::Receiver;
 
 use tracing::info;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
-use crate::database::db::DbPool;
+use crate::database::connection::DbPool;
 use crate::routes::auth::LoginInfo;
 use crate::routes::users::{CreateUser, UpdateUser};
 use crate::routes::vitals::Vitals;
 use crate::{errors::AppError, routes};
+use tower_http::cors::CorsLayer;
+
 #[derive(OpenApi)]
 #[openapi(
   components(schemas(Vitals, CreateUser, UpdateUser, LoginInfo)),
-  paths(crate::routes::vitals::get_vitals, crate::routes::vitals::hello,
+  paths(
+    // Vitals
+    crate::routes::vitals::get_vitals, crate::routes::vitals::hello,
+    // Users
     crate::routes::users::get_user, crate::routes::users::create_user, crate::routes::users::update_user, crate::routes::users::delete_user,
-    crate::routes::auth::login, crate::routes::auth::logout),
+    // Auth
+    crate::routes::auth::login, crate::routes::auth::logout, crate::routes::auth::refresh,
+    // Plans
+    crate::routes::plans::all_plans, crate::routes::plans::create_plan, crate::routes::plans::delete_plan
+  ),
   tags(
     (name="vitals", description="Endpoints for retrieving system vitals"),
     (name="users", description="Endpoints for managing users"),
-    (name="auth", description="Endpoints for user authentication")
+    (name="auth", description="Endpoints for user authentication"),
+    (name="plans", description="Endpoints for managing user plans")
   )
 )]
 struct ApiDoc;
@@ -37,11 +45,18 @@ struct ApiDoc;
 ///
 /// * `Router` - The router with the REST API endpoints.
 pub fn app(pool: Arc<DbPool>) -> Router {
+    let cors = CorsLayer::new()
+        .allow_origin("http://localhost:3000".parse::<HeaderValue>().unwrap()) // Replace with your frontend's URL
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_headers([header::CONTENT_TYPE, header::AUTHORIZATION])
+        .allow_credentials(true);
     Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .merge(routes::vitals::create_route())
         .merge(routes::users::create_route())
         .merge(routes::auth::create_route(pool.clone()))
+        .merge(routes::plans::create_route(pool.clone()))
+        .layer(cors)
         .with_state(pool)
 }
 
